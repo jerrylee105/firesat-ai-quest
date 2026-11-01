@@ -1,0 +1,21 @@
+{
+  "name": "firesat-ai-quest",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FireSat AI Quest - Mô phỏng Vệ tinh & Học máy Phát hiện Cháy rừng Siêu sớm",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "firesat",
+    "machine-learning",
+    "satellite",
+    "wildfire",
+    "ai-quest",
+    "education"
+  ],
+  "author": "",
+  "license": "MIT"
+}

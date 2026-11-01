@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FireSat Simulator - Vệ Tinh AI Săn Lửa Rừng</title>
+    <meta name="description" content="Trải nghiệm mô phỏng Vệ tinh viễn thám FireSat và Trí tuệ Nhân tạo phát hiện sớm đốm lửa rừng 5m x 5m từ không gian vũ trụ.">
+    <meta name="theme-color" content="#060913">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛰️</text></svg>">
+    <meta property="og:title" content="FireSat Simulator - Vệ Tinh AI Săn Lửa Rừng">
+    <meta property="og:description" content="Mô phỏng chu trình Học máy 4 bước: Thu thập, Làm sạch, Huấn luyện mô hình và Tuần tra dập tắt cháy rừng.">
+    <meta property="og:type" content="website">
+    <link rel="stylesheet" href="style.css?v=9">
+</head>
+<body>
+    <!-- Canvas Hiệu ứng Hạt (Sao trời, tia lửa, nước cứu hỏa, confetti) -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- HEADER: Mission Control HUD & Breadcrumb 4 bước học máy -->
+    <header class="game-header">
+        <div class="logo-group">
+            <div class="satellite-emblem">🛰️</div>
+            <div>
+                <div class="game-title">FIRESAT SIMULATOR</div>
+            </div>
+        </div>
+
+        <!-- 4 Bước chu trình Học máy -->
+        <div class="ml-pipeline">
+            <div class="step-item active" id="step-nav-1">
+                <span>1. Thu thập</span>
+            </div>
+            <span class="step-arrow">➔</span>
+            <div class="step-item" id="step-nav-2">
+                <span>2. Lọc dữ liệu</span>
+            </div>
+            <span class="step-arrow">➔</span>
+            <div class="step-item" id="step-nav-3">
+                <span>3. Huấn luyện</span>
+            </div>
+            <span class="step-arrow">➔</span>
+            <div class="step-item" id="step-nav-4">
+                <span>4. Ứng dụng</span>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button class="btn-icon" id="btn-audio-toggle" title="Bật/Tắt âm thanh">🔊</button>
+        </div>
+    </header>
+
+    <!-- THANH CHỈ DẪN TRỢ LÝ AI (MISSION GUIDE TICKER - 1 DÒNG GỌN GÀNG TRÊN CÙNG) -->
+    <div class="ai-guide-bar">
+        <div class="bot-avatar-box">
+            <img src="assets/images/robot_assistant.jpg" alt="FireSat AI Assistant" class="bot-avatar-img" id="robot-avatar">
+            <div class="bot-status-ring"></div>
+        </div>
+        <div class="bot-badge">TRỢ LÝ FIRESAT BOT:</div>
+        <div class="bot-ticker-msg" id="robot-dialogue-text">
+            Chào Chỉ huy! Nhấn Bắt Đầu để khởi động vệ tinh nhé!
+        </div>
+    </div>
+
+    <!-- KHÔNG GIAN CÁC MÀN CHƠI (VIEWPORT) -->
+    <main class="game-viewport">
+
+        <!-- SCREEN 0: BẮT ĐẦU & NHIỆM VỤ KHÔNG GIAN -->
+        <section class="screen active" id="screen-intro">
+            <div class="intro-hud-card">
+                <h1>CANH GÁC RỪNG GIÀ TỪ VŨ TRỤ</h1>
+                <p>
+                    Dự án <strong>Google FireSat</strong> sử dụng chùm vệ tinh tầm thấp trang bị <strong>Cảm biến Nhiệt Hồng Ngoại</strong> 
+                    và <strong>Trí tuệ Nhân tạo (AI)</strong> để phát hiện đốm lửa siêu nhỏ <strong>5m × 5m</strong> ngay khi vừa bùng phát!
+                </p>
+
+                <div class="brief-grid">
+                    <div class="brief-item">
+                        <div class="brief-title">📡 BỘ DỮ LIỆU 16 ẢNH VIỄN THÁM THỰC TẾ</div>
+                        <div class="brief-desc">Bao gồm 5 đốm cháy rừng thật, 7 cảnh quan an toàn (mái tôn lóa, hồ, mây) và 4 ảnh lỗi cảm biến.</div>
+                    </div>
+                    <div class="brief-item">
+                        <div class="brief-title">🌡️ PHÂN TÍCH QUANG PHỔ NHIỆT</div>
+                        <div class="brief-desc">Đọc số đo nhiệt độ (°C) để phân biệt chính xác đám cháy thật (>200°C) với mái tôn phản quang nắng (48°C).</div>
+                    </div>
+                </div>
+
+                <button class="btn-cyber" id="btn-start-quest">🚀 KHỞI ĐỘNG HỆ THỐNG VỆ TINH</button>
+            </div>
+        </section>
+
+        <!-- SCREEN 1: MÀN 1 - THU THẬP DỮ LIỆU ĐỒNG BỘ QUỸ ĐẠO (16 ẢNH) -->
+        <section class="screen" id="screen-1">
+            <div class="mission-monitor">
+                <div class="monitor-header">
+                    <div class="status-tag">🛰️ QUỸ ĐẠO VỆ TINH TẦM THẤP (LEO) • TỐC ĐỘ QUÉT QUANG HỌC</div>
+                    <div class="counter-tag" id="photo-counter-text">DỮ LIỆU ĐÃ THU THẬP: 0/16 ẢNH</div>
+                </div>
+
+                <!-- Khung nhìn Quả địa cầu 3D xoay quanh trục & Chùm quét vệ tinh 2 chiều -->
+                <div class="satellite-ground-canvas" id="ground-canvas-viewport">
+                    <canvas id="globe-3d-canvas"></canvas>
+                </div>
+
+                <!-- Bảng điều khiển chụp ảnh & Khay 16 ảnh thumbnail kèm nút điều hướng ◀ ▶ -->
+                <div class="monitor-control-tray">
+                    <div style="font-size: 11px; color: #90a4ae; font-family: var(--font-mono); white-space: nowrap;">
+                        DỮ LIỆU ĐÃ CHỤP (16 ẢNH):
+                    </div>
+                    <div class="thumb-carousel-wrap">
+                        <button class="btn-thumb-nav" id="btn-thumb-prev" type="button" title="Cuộn xem ảnh trước">◀</button>
+                        <div class="captured-thumb-strip" id="photo-thumb-strip">
+                            <div class="thumb-cell" id="thumb-1"></div>
+                            <div class="thumb-cell" id="thumb-2"></div>
+                            <div class="thumb-cell" id="thumb-3"></div>
+                            <div class="thumb-cell" id="thumb-4"></div>
+                            <div class="thumb-cell" id="thumb-5"></div>
+                            <div class="thumb-cell" id="thumb-6"></div>
+                            <div class="thumb-cell" id="thumb-7"></div>
+                            <div class="thumb-cell" id="thumb-8"></div>
+                            <div class="thumb-cell" id="thumb-9"></div>
+                            <div class="thumb-cell" id="thumb-10"></div>
+                            <div class="thumb-cell" id="thumb-11"></div>
+                            <div class="thumb-cell" id="thumb-12"></div>
+                            <div class="thumb-cell" id="thumb-13"></div>
+                            <div class="thumb-cell" id="thumb-14"></div>
+                            <div class="thumb-cell" id="thumb-15"></div>
+                            <div class="thumb-cell" id="thumb-16"></div>
+                        </div>
+                        <button class="btn-thumb-nav" id="btn-thumb-next" type="button" title="Cuộn xem ảnh kế tiếp">▶</button>
+                    </div>
+                    <button class="btn-cyber" id="btn-goto-cleaning" style="display: none; padding: 10px 20px; font-size: 12.5px; white-space: nowrap;">
+                        🧹 BƯỚC 2: PHÂN TÍCH NHIỆT & LỌC ➔
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: MÀN 2 - BÀN ĐIỀU PHỐI DỮ LIỆU & PHÂN TÍCH NHIỆT VIỄN THÁM (ARCADE GAMING) -->
+        <section class="screen" id="screen-2">
+            <div class="arcade-stage-desk">
+                <!-- ARCADE HEADER BAR: THANH THỜI GIAN NĂNG LƯỢNG + ĐIỂM SỐ COMBO -->
+                <div class="arcade-hud-header">
+                    <!-- THANH NĂNG LƯỢNG THỜI GIAN ĐẾM NGƯỢC -->
+                    <div class="arcade-energy-timer-box">
+                        <div class="energy-timer-label">
+                            <span>⚡ ORBIT SYNC TIME</span>
+                            <span><strong id="s2-countdown">70</strong>s</span>
+                        </div>
+                        <div class="energy-timer-track">
+                            <div class="energy-timer-fill" id="s2-timer-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- COMBO & TIẾN ĐỘ -->
+                    <div class="arcade-hud-right">
+                        <div class="combo-badge" id="s2-combo-badge">COMBO x1</div>
+                        <div class="progress-pill" id="cleaning-counter">0 / 16 ẢNH</div>
+                    </div>
+                </div>
+
+                <!-- GAMEPLAY ARENA: 2 KHU VỰC (3 Ô PHÂN LOẠI HÀNG NGANG BÊN TRÁI | BUỒNG ẢNH & THANG NHIỆT BÊN PHẢI) -->
+                <div class="arcade-gameplay-arena">
+                    <!-- NỬA TRÁI: 3 Ô PHÂN LOẠI XẾP THEO HÀNG NGANG CẠNH NHAU -->
+                    <div class="arcade-pods-row">
+                        <!-- Ô 1: ĐỐM CHÁY (ĐỎ) -->
+                        <div class="energy-drop-pod fire-pod" id="zone-fire" data-target="fire">
+                            <div class="pod-glow-ring"></div>
+                            <div class="pod-core-icon">🔥</div>
+                            <div class="pod-meta">
+                                <div class="pod-name">ĐỐM CHÁY</div>
+                                <div class="pod-cond">NHIỆT &gt; 200°C</div>
+                            </div>
+                            <div class="pod-score-badge" id="count-fire">0/5</div>
+                            <div class="pod-drop-hint">⤓ THẢ VÀO ĐÂY</div>
+                        </div>
+
+                        <!-- Ô 2: AN TOÀN (XANH) -->
+                        <div class="energy-drop-pod safe-pod" id="zone-safe" data-target="safe">
+                            <div class="pod-glow-ring"></div>
+                            <div class="pod-core-icon">🛡️</div>
+                            <div class="pod-meta">
+                                <div class="pod-name">AN TOÀN</div>
+                                <div class="pod-cond">MÁT &lt; 60°C</div>
+                            </div>
+                            <div class="pod-score-badge" id="count-safe">0/7</div>
+                            <div class="pod-drop-hint">⤓ THẢ VÀO ĐÂY</div>
+                        </div>
+
+                        <!-- Ô 3: ẢNH LỖI (XÁM RÁC / ERR) -->
+                        <div class="energy-drop-pod trash-pod" id="zone-trash" data-target="trash">
+                            <div class="pod-glow-ring"></div>
+                            <div class="pod-core-icon">🗑️</div>
+                            <div class="pod-meta">
+                                <div class="pod-name">ẢNH LỖI</div>
+                                <div class="pod-cond">SENSOR ERR</div>
+                            </div>
+                            <div class="pod-score-badge" id="count-trash">0/4</div>
+                            <div class="pod-drop-hint">⤓ THẢ VÀO ĐÂY</div>
+                        </div>
+                    </div>
+
+                    <!-- NỬA PHẢI: BUỒNG HIỂN THỊ HÌNH VỆ TINH & TÍCH HỢP BIỂU ĐỒ NHIỆT KẾ -->
+                    <div class="hologram-scanner-chamber" id="hologram-inspect-panel">
+                        <!-- THÂN BUỒNG: ẢNH VỆ TINH + THANG NHIỆT KẾ DỌC TÍCH HỢP LIỀN KỀ -->
+                        <div class="scanner-main-body">
+                            <!-- KHUNG ẢNH VỚI TIA LASER QUÉT SẠCH SẼ (KHÔNG BỊ ĐÈ TAG) -->
+                            <div class="scanner-viewport">
+                                <img id="inspect-real-img" src="" alt="Satellite View">
+                                <div class="laser-scanner-line"></div>
+                                <div class="scanner-grid-overlay"></div>
+                            </div>
+
+                            <!-- THANG ĐO NHIỆT KẾ DỌC SCI-FI TÍCH HỢP -->
+                            <div class="vertical-thermal-tower">
+                                <div class="tower-label">THERMAL</div>
+                                <div class="tower-gauge-wrap">
+                                    <div class="tower-track">
+                                        <div class="tower-danger-zone"></div>
+                                        <div class="tower-marker" id="temp-gauge-marker" style="bottom: 10%;"></div>
+                                    </div>
+                                    <div class="tower-ticks-col">
+                                        <span class="tick-label tick-600">600°</span>
+                                        <span class="tick-label tick-200">200°🔥</span>
+                                        <span class="tick-label tick-60">60°🛡️</span>
+                                        <span class="tick-label tick-0">0°</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BẢNG THÔNG TIN QUANG PHỔ & ĐỒNG HỒ NHIỆT ĐỘ LED KHỔNG LỒ -->
+                        <div class="scanner-telemetry-strip">
+                            <div class="telemetry-info-group">
+                                <div class="scanner-spectrum-desc" id="card-desc-text">Quang phổ hồng ngoại trung (MWIR 3.7µm) • Đang phân tích bức xạ nhiệt...</div>
+                            </div>
+                            <div class="speedo-temp-display">
+                                <div class="speedo-temp-num" id="temp-display-val">520°C</div>
+                                <div class="speedo-temp-sub">INFRARED HEAT</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DƯỚI CÙNG: BĂNG THẺ BÀI CYBER DATA CARDS DECK (16 THẺ) -->
+                <div class="cyber-cards-deck-tray">
+                    <div class="deck-tray-header">
+                        <span>🗂️ 16 THẺ DỮ LIỆU (KÉO THẢ VÀO 3 KHAY PHÂN LOẠI PHÍA TRÊN):</span>
+                        <div class="deck-scroll-controls">
+                            <button class="btn-deck-scroll" id="btn-deck-left" type="button">◀</button>
+                            <button class="btn-deck-scroll" id="btn-deck-right" type="button">▶</button>
+                        </div>
+                    </div>
+                    <div class="cyber-cards-scroll-strip" id="tactical-deck-grid">
+                        <!-- 16 thẻ bài sinh động bằng JS -->
+                    </div>
+                </div>
+
+                <!-- Nút chuyển sang Bước 3 khi xong 16 ảnh -->
+                <div style="text-align: center; margin-top: 4px;">
+                    <button class="btn-cyber" id="btn-goto-training" style="display: none; padding: 10px 32px; font-size: 13px;">
+                        ⚡ DỮ LIỆU ĐÃ SẠCH! TIẾN VÀO BƯỚC 3: HUẤN LUYỆN AI ➔
+                    </button>
+                </div>
+            </div>
+
+            <!-- MODAL HẾT GIỜ (ARCADE TIMEOUT) -->
+            <div class="s2-timeout-overlay" id="s2-timeout-overlay">
+                <div class="s2-timeout-card">
+                    <div class="timeout-icon">⚡</div>
+                    <h2 style="color: #ff1744; margin-top: 6px; font-family: var(--font-mono); font-size: 26px; letter-spacing: 2px;">TIME OUT</h2>
+                    <button class="btn-cyber" id="btn-retry-stage2" style="margin-top: 18px; width: 100%; background: linear-gradient(135deg, #ff1744, #ff9100);">
+                        🔄 THỬ LẠI
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 3: MÀN 3 - MẠNG NƠ-RON NHÂN TẠO ANN (VISUAL HEAVY - TỰ MÒ MẪM) -->
+        <section class="screen" id="screen-3">
+            <div class="tuning-deck reactor-deck ann-deck">
+                <div class="reactor-header">
+                    <span class="status-tag">GIAI ĐOẠN 3: HUẤN LUYỆN BỘ NÃO AI</span>
+                    <h2 style="margin-top: 4px; font-size: 21px; letter-spacing: 0.5px;">MẠNG NƠ-RON NHÂN TẠO (DEEP NEURAL NETWORK)</h2>
+                </div>
+
+                <!-- KHU VỰC TRUNG TÂM: MẠNG NƠ-RON ĐA TẦNG ANN SIÊU NGẦU (3 INPUTS & DYNAMIC LAYERS) -->
+                <div class="ann-model-board" id="ann-board-container">
+                    <!-- Cột 3 Cổng Cảm Biến Đầu Vào (Thẻ bấm tương tác trực tiếp) -->
+                    <div class="ann-inputs-col">
+                        <div class="ann-sensor-card" id="sensor-card-rgb" data-sensor="rgb" title="Bấm để Bật / Tắt cảm biến ảnh quang học">
+                            <div class="sensor-indicator-light"></div>
+                            <span class="sensor-card-icon">👁️</span>
+                            <span class="sensor-card-title">ẢNH QUANG HỌC</span>
+                        </div>
+
+                        <div class="ann-sensor-card" id="sensor-card-ir" data-sensor="ir" title="Bấm để Bật / Tắt cảm biến nhiệt hồng ngoại">
+                            <div class="sensor-indicator-light"></div>
+                            <span class="sensor-card-icon">🌡️</span>
+                            <span class="sensor-card-title">NHIỆT HỒNG NGOẠI</span>
+                        </div>
+
+                        <div class="ann-sensor-card" id="sensor-card-radar" data-sensor="radar" title="Bấm để Bật / Tắt cảm biến Radar SAR xuyên mây">
+                            <div class="sensor-indicator-light"></div>
+                            <span class="sensor-card-icon">📡</span>
+                            <span class="sensor-card-title">RADAR XUYÊN MÂY (SAR)</span>
+                        </div>
+                    </div>
+
+                    <!-- SVG VẼ MẠNG LƯỚI SYNAPSE ĐAN CHÉO ĐA TẦNG ĐỘNG -->
+                    <div class="ann-network-canvas">
+                        <svg viewBox="0 0 540 190" class="ann-svg-matrix" id="ann-svg-matrix">
+                            <defs>
+                                <linearGradient id="grad-synapse-active" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.9" />
+                                    <stop offset="50%" stop-color="#b388ff" stop-opacity="0.9" />
+                                    <stop offset="100%" stop-color="#00e676" stop-opacity="0.9" />
+                                </linearGradient>
+                            </defs>
+
+                            <!-- CÁC SỢI SYNAPSE TỪ INPUT -> HIDDEN 1 -->
+                            <g id="synapses-input-h1" class="synapse-group">
+                                <!-- Từ Input RGB (x=25, y=35) -->
+                                <line x1="25" y1="35" x2="160" y2="20" data-from="node-in-rgb" data-to="node-h1-1" class="synapse-line active" />
+                                <line x1="25" y1="35" x2="160" y2="50" data-from="node-in-rgb" data-to="node-h1-2" class="synapse-line active" />
+                                <line x1="25" y1="35" x2="160" y2="80" data-from="node-in-rgb" data-to="node-h1-3" class="synapse-line active" />
+
+                                <!-- Từ Input IR (x=25, y=95) -->
+                                <line x1="25" y1="95" x2="160" y2="50" data-from="node-in-ir" data-to="node-h1-2" class="synapse-line active" />
+                                <line x1="25" y1="95" x2="160" y2="80" data-from="node-in-ir" data-to="node-h1-3" class="synapse-line active" />
+                                <line x1="25" y1="95" x2="160" y2="110" data-from="node-in-ir" data-to="node-h1-4" class="synapse-line active" />
+                                <line x1="25" y1="95" x2="160" y2="140" data-from="node-in-ir" data-to="node-h1-5" class="synapse-line active" />
+
+                                <!-- Từ Input RADAR (x=25, y=155) -->
+                                <line x1="25" y1="155" x2="160" y2="110" data-from="node-in-radar" data-to="node-h1-4" class="synapse-line active" />
+                                <line x1="25" y1="155" x2="160" y2="140" data-from="node-in-radar" data-to="node-h1-5" class="synapse-line active" />
+                                <line x1="25" y1="155" x2="160" y2="170" data-from="node-in-radar" data-to="node-h1-6" class="synapse-line active" />
+                            </g>
+
+                            <!-- CÁC SỢI SYNAPSE TỪ HIDDEN 1 (x=160) -> HIDDEN 2 (x=340) -->
+                            <g id="synapses-h1-h2" class="synapse-group">
+                                <!-- Từ H1-1 -->
+                                <line x1="160" y1="20" x2="340" y2="20" data-from="node-h1-1" data-to="node-h2-1" class="synapse-line active" />
+                                <line x1="160" y1="20" x2="340" y2="50" data-from="node-h1-1" data-to="node-h2-2" class="synapse-line active" />
+                                <line x1="160" y1="20" x2="340" y2="80" data-from="node-h1-1" data-to="node-h2-3" class="synapse-line active" />
+
+                                <!-- Từ H1-2 -->
+                                <line x1="160" y1="50" x2="340" y2="20" data-from="node-h1-2" data-to="node-h2-1" class="synapse-line active" />
+                                <line x1="160" y1="50" x2="340" y2="50" data-from="node-h1-2" data-to="node-h2-2" class="synapse-line active" />
+                                <line x1="160" y1="50" x2="340" y2="80" data-from="node-h1-2" data-to="node-h2-3" class="synapse-line active" />
+
+                                <!-- Từ H1-3 -->
+                                <line x1="160" y1="80" x2="340" y2="50" data-from="node-h1-3" data-to="node-h2-2" class="synapse-line active" />
+                                <line x1="160" y1="80" x2="340" y2="80" data-from="node-h1-3" data-to="node-h2-3" class="synapse-line active" />
+                                <line x1="160" y1="80" x2="340" y2="110" data-from="node-h1-3" data-to="node-h2-4" class="synapse-line active" />
+
+                                <!-- Từ H1-4 -->
+                                <line x1="160" y1="110" x2="340" y2="80" data-from="node-h1-4" data-to="node-h2-3" class="synapse-line active" />
+                                <line x1="160" y1="110" x2="340" y2="110" data-from="node-h1-4" data-to="node-h2-4" class="synapse-line active" />
+                                <line x1="160" y1="110" x2="340" y2="140" data-from="node-h1-4" data-to="node-h2-5" class="synapse-line active" />
+
+                                <!-- Từ H1-5 -->
+                                <line x1="160" y1="140" x2="340" y2="110" data-from="node-h1-5" data-to="node-h2-4" class="synapse-line active" />
+                                <line x1="160" y1="140" x2="340" y2="140" data-from="node-h1-5" data-to="node-h2-5" class="synapse-line active" />
+                                <line x1="160" y1="140" x2="340" y2="170" data-from="node-h1-5" data-to="node-h2-6" class="synapse-line active" />
+
+                                <!-- Từ H1-6 -->
+                                <line x1="160" y1="170" x2="340" y2="110" data-from="node-h1-6" data-to="node-h2-4" class="synapse-line active" />
+                                <line x1="160" y1="170" x2="340" y2="140" data-from="node-h1-6" data-to="node-h2-5" class="synapse-line active" />
+                                <line x1="160" y1="170" x2="340" y2="170" data-from="node-h1-6" data-to="node-h2-6" class="synapse-line active" />
+                            </g>
+
+                            <!-- CÁC SỢI SYNAPSE TỪ HIDDEN 2 (x=340) -> OUTPUT (x=490) -->
+                            <g id="synapses-h2-out" class="synapse-group">
+                                <line x1="340" y1="20" x2="490" y2="60" data-from="node-h2-1" data-to="node-out-fire" class="synapse-line active" />
+                                <line x1="340" y1="20" x2="490" y2="130" data-from="node-h2-1" data-to="node-out-safe" class="synapse-line active" />
+
+                                <line x1="340" y1="50" x2="490" y2="60" data-from="node-h2-2" data-to="node-out-fire" class="synapse-line active" />
+                                <line x1="340" y1="50" x2="490" y2="130" data-from="node-h2-2" data-to="node-out-safe" class="synapse-line active" />
+
+                                <line x1="340" y1="80" x2="490" y2="60" data-from="node-h2-3" data-to="node-out-fire" class="synapse-line active" />
+                                <line x1="340" y1="80" x2="490" y2="130" data-from="node-h2-3" data-to="node-out-safe" class="synapse-line active" />
+
+                                <line x1="340" y1="110" x2="490" y2="60" data-from="node-h2-4" data-to="node-out-fire" class="synapse-line active" />
+                                <line x1="340" y1="110" x2="490" y2="130" data-from="node-h2-4" data-to="node-out-safe" class="synapse-line active" />
+
+                                <line x1="340" y1="140" x2="490" y2="60" data-from="node-h2-5" data-to="node-out-fire" class="synapse-line active" />
+                                <line x1="340" y1="140" x2="490" y2="130" data-from="node-h2-5" data-to="node-out-safe" class="synapse-line active" />
+
+                                <line x1="340" y1="170" x2="490" y2="60" data-from="node-h2-6" data-to="node-out-fire" class="synapse-line active" />
+                                <line x1="340" y1="170" x2="490" y2="130" data-from="node-h2-6" data-to="node-out-safe" class="synapse-line active" />
+                            </g>
+
+                            <!-- NƠ-RON TẦNG INPUT (3 Nốt tròn phát sáng) -->
+                            <g class="ann-nodes-layer" id="layer-in-nodes">
+                                <circle cx="25" cy="35" r="7" class="ann-node-circle in-node" id="node-in-rgb" />
+                                <circle cx="25" cy="95" r="7" class="ann-node-circle in-node" id="node-in-ir" />
+                                <circle cx="25" cy="155" r="7" class="ann-node-circle in-node" id="node-in-radar" />
+                            </g>
+
+                            <!-- NƠ-RON TẦNG ẨN 1 (Xanh dương / Cyan - 6 nơ-ron) -->
+                            <g class="ann-nodes-layer" id="layer-h1-nodes">
+                                <circle cx="160" cy="20" r="8" class="ann-node-circle h1" id="node-h1-1" />
+                                <circle cx="160" cy="50" r="8" class="ann-node-circle h1" id="node-h1-2" />
+                                <circle cx="160" cy="80" r="8" class="ann-node-circle h1" id="node-h1-3" />
+                                <circle cx="160" cy="110" r="8" class="ann-node-circle h1" id="node-h1-4" />
+                                <circle cx="160" cy="140" r="8" class="ann-node-circle h1" id="node-h1-5" />
+                                <circle cx="160" cy="170" r="8" class="ann-node-circle h1" id="node-h1-6" />
+                            </g>
+
+                            <!-- NƠ-RON TẦNG ẨN 2 (Màu Tím Neon - 6 nơ-ron) -->
+                            <g class="ann-nodes-layer" id="layer-h2-nodes">
+                                <circle cx="340" cy="20" r="8" class="ann-node-circle h2" id="node-h2-1" />
+                                <circle cx="340" cy="50" r="8" class="ann-node-circle h2" id="node-h2-2" />
+                                <circle cx="340" cy="80" r="8" class="ann-node-circle h2" id="node-h2-3" />
+                                <circle cx="340" cy="110" r="8" class="ann-node-circle h2" id="node-h2-4" />
+                                <circle cx="340" cy="140" r="8" class="ann-node-circle h2" id="node-h2-5" />
+                                <circle cx="340" cy="170" r="8" class="ann-node-circle h2" id="node-h2-6" />
+                            </g>
+                        </svg>
+
+                        <!-- 2 Đầu ra Phân loại (Output Pins) -->
+                        <div class="ann-outputs-col">
+                            <div class="ann-out-badge fire" id="out-fire-pill">
+                                <span class="out-icon">🔥</span>
+                                <span class="out-title">LỬA</span>
+                            </div>
+                            <div class="ann-out-badge safe" id="out-safe-pill">
+                                <span class="out-icon">🌲</span>
+                                <span class="out-title">RỪNG</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KHU VỰC ĐIỀU KHIỂN: 2 THANH TRƯỢT TỰ MÒ MẪM (DUAL SLIDERS) -->
+                <div class="dual-sliders-console">
+                    <!-- Thanh trượt 1: Ngưỡng nhiệt -->
+                    <div class="slider-module">
+                        <div class="slider-module-header">
+                            <span class="module-title">🌡️ NGƯỠNG NHIỆT ĐỘ</span>
+                            <span class="pure-value-tag" id="thresh-val-display">50°C</span>
+                        </div>
+                        <input type="range" min="50" max="500" step="10" value="50" id="slider-temp-threshold" class="cyber-reactor-slider">
+                        <div class="slider-ticks-clean">
+                            <span>50°C</span>
+                            <span>150°C</span>
+                            <span>250°C</span>
+                            <span>350°C</span>
+                            <span>500°C</span>
+                        </div>
+                    </div>
+
+                    <!-- Thanh trượt 2: Số lần học (Epochs Slider lên tới 70 LẦN) -->
+                    <div class="slider-module">
+                        <div class="slider-module-header">
+                            <span class="module-title">🔄 SỐ LẦN HỌC</span>
+                            <span class="pure-value-tag" id="epoch-val-display">5 LẦN</span>
+                        </div>
+                        <input type="range" min="5" max="70" step="5" value="5" id="slider-epochs-count" class="cyber-reactor-slider">
+                        <div class="slider-ticks-clean">
+                            <span>5</span>
+                            <span>20</span>
+                            <span>35</span>
+                            <span>50</span>
+                            <span>70</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BẢNG TIẾN TRÌNH & ĐỒNG HỒ ĐỘ CHÍNH XÁC -->
+                <div class="reactor-telemetry-strip" style="margin-top: 4px;">
+                    <div class="telemetry-bar-container">
+                        <div class="telemetry-track">
+                            <div id="tuning-fill-bar" class="telemetry-fill-bar" style="width: 0%;"></div>
+                        </div>
+                        <div class="telemetry-meta-row">
+                            <span id="tuning-status-label">Sẵn sàng huấn luyện mạng nơ-ron...</span>
+                            <span id="tuning-percent-label">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="telemetry-meter" style="min-width: 140px;">
+                        <span class="meter-title">ĐỘ CHÍNH XÁC</span>
+                        <span class="meter-value" id="tele-acc-val" style="color: var(--neon-green); font-size: 19px;">-- %</span>
+                    </div>
+                </div>
+
+                <!-- NÚT KÍCH HOẠT CHÍNH -->
+                <div class="reactor-buttons-bay">
+                    <button class="btn-cyber btn-reactor-train" id="btn-exec-train" style="font-size: 15px; padding: 12px 34px;">
+                        ⚡ CHẠY HUẤN LUYỆN
+                    </button>
+                    <button class="btn-cyber" id="btn-deploy-sat" style="display: none; background: linear-gradient(135deg, #00b0ff, #00e676); color: #000; font-size: 15px; padding: 12px 34px;">
+                        🛰️ VÀO TUẦN TRA DẬP LỬA ➔
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 4: MÀN 4 - TUẦN TRA THỰC ĐỊA & AI TỰ ĐỘNG NHẬN DIỆN 5MX5M -->
+        <section class="screen" id="screen-4">
+            <div class="patrol-screen-box">
+                <div class="monitor-header">
+                    <div class="status-tag">📡 FIRESAT ON-ORBIT INFERENCE: AI TỰ ĐỘNG QUÉT THỰC ĐỊA</div>
+                </div>
+
+                <div class="patrol-forest-map" id="patrol-map-surface">
+                    <div class="ground-grid-overlay"></div>
+                    <div class="sweeping-laser-line" id="sweeping-radar-scan"></div>
+
+                    <!-- Container chứa 6 điểm POI thực địa được AI tự động phân tích -->
+                    <div class="patrol-pois-grid" id="patrol-poi-container"></div>
+
+                    <!-- Trực thăng cứu hỏa chuyên dụng (PNG tách nền trong suốt) -->
+                    <div class="helicopter-unit" id="patrol-heli">
+                        <div class="heli-inner-body">
+                            <!-- Cánh quạt chính nóc cabin (đồng bộ chuyển động thân) -->
+                            <div class="heli-rotor-main">
+                                <div class="heli-rotor-perspective">
+                                    <div class="heli-rotor-disc"></div>
+                                    <div class="heli-rotor-blades"></div>
+                                </div>
+                                <div class="heli-rotor-hub"></div>
+                            </div>
+                            <!-- Cánh quạt đuôi xoay tít -->
+                            <div class="heli-tail-rotor">
+                                <div class="tail-rotor-blades"></div>
+                            </div>
+                            <img src="assets/images/fire_helicopter_rescue_iso.png?v=9" alt="Fire Rescue Helicopter" class="heli-photo-asset" id="heli-img">
+                            <div class="heli-water-hose"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bảng điều khiển lệnh khẩn cấp của chỉ huy -->
+                <div class="patrol-command-bar">
+                    <div class="patrol-telemetry-metrics">
+                        <div class="patrol-metric-badge" id="metric-ai-thresh">
+                            <span class="metric-lbl">NGƯỠNG NHIỆT AI:</span>
+                            <span class="metric-val" id="val-ai-thresh" style="color: #ff9100;">200°C</span>
+                        </div>
+                        <div class="patrol-metric-badge" id="metric-ai-accuracy">
+                            <span class="metric-lbl">ĐỘ CHÍNH XÁC AI:</span>
+                            <span class="metric-val" id="val-ai-acc">--%</span>
+                        </div>
+                        <div class="patrol-metric-badge" id="metric-fire-locked">
+                            <span class="metric-lbl">ĐỐM CHÁY ĐÃ KHÓA:</span>
+                            <span class="metric-val" id="val-fire-count" style="color: #ff1744;">0 / 4</span>
+                        </div>
+                        <div class="patrol-metric-badge" id="metric-safe-filtered">
+                            <span class="metric-lbl">BÁO ĐỘNG GIẢ ĐÃ LỌC:</span>
+                            <span class="metric-val" id="val-safe-count" style="color: var(--neon-green);">0 / 4</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-emergency-fire" id="btn-fire-action" disabled>
+                        🚨 PHÁT LỆNH ĐỘI CỨU HỎA XUẤT KÍCH
+                    </button>
+                </div>
+
+                <!-- Modal Cảnh Báo Thất Bại Khi AI Nhận Diện Sai Dưới 98% (Siêu Gọn - Chống Tràn Khung) -->
+                <div class="patrol-fail-modal" id="patrol-fail-modal" style="display: none;">
+                    <div class="fail-modal-content">
+                        <div class="fail-alarm-icon">🚨</div>
+                        <h2 class="fail-modal-title">NHIỆM VỤ THẤT BẠI!</h2>
+                        <div class="fail-modal-badge" id="fail-modal-acc-badge">AI ĐẠT 70.0% (CẦN ≥ 98%)</div>
+
+                        <div class="fail-stats-box" id="fail-modal-stats"></div>
+
+                        <div class="fail-hint-line" id="fail-modal-hint">
+                            💡 Gợi ý: Chỉnh ngưỡng nhiệt về 180°C – 220°C ở Màn 3.
+                        </div>
+
+                        <button class="btn-cyber btn-retry-stage3" id="btn-back-to-stage3">
+                            🔄 HUẤN LUYỆN LẠI AI (MÀN 3)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 5: VINH DANH & KẾT THÚC -->
+        <section class="screen" id="screen-victory">
+            <div class="victory-card">
+                <div class="victory-trophy">🏆</div>
+                <h1 style="color: var(--neon-green); font-size: 26px;">NHIỆM VỤ HOÀN THÀNH XUẤT SẮC!</h1>
+                <p style="color: #b0bec5; margin-top: 8px; font-size: 14px;">
+                    Chúc mừng Kỹ sư AI nhí! Nhờ sự kết hợp giữa Cảm biến Hồng ngoại và Trí tuệ Nhân tạo huấn luyện trên 16 ảnh viễn thám thực tế, đốm cháy 5m × 5m đã bị dập tắt thần tốc!
+                </p>
+
+                <div class="victory-stats">
+                    <div class="stat-item">
+                        <div class="stat-val">5m × 5m</div>
+                        <div class="stat-lbl">Phát hiện đốm cháy siêu sớm</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-val">&lt; 20 Phút</div>
+                        <div class="stat-lbl">Thời gian phản ứng cực nhanh</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-val">10.000 Ha</div>
+                        <div class="stat-lbl">Rừng nguyên sinh được bảo vệ</div>
+                    </div>
+                </div>
+
+                <button class="btn-cyber" id="btn-replay-all" style="background: linear-gradient(135deg, #00e5ff, #00e676);">
+                    🔄 CHƠI LẠI TỪ ĐẦU
+                </button>
+            </div>
+        </section>
+
+    </main>
+ 
+    <!-- MODAL DẪN CHUYỆN & GIAO NHIỆM VỤ CỦA FIRESAT BOT (MISSION BRIEFING POPUP) -->
+    <div class="briefing-overlay" id="briefing-modal-overlay">
+        <div class="briefing-modal-card">
+            <div class="briefing-holo-scanner"></div>
+            
+            <div class="briefing-badge" id="briefing-stage-tag">🛰️ NHIỆM VỤ CHẶNG 1 / 4</div>
+            
+            <div class="briefing-bot-header">
+                <div class="briefing-avatar-box">
+                    <img src="assets/images/robot_assistant.jpg" alt="FireSat AI Assistant" class="briefing-avatar-img">
+                    <div class="briefing-avatar-glow"></div>
+                </div>
+                <div class="briefing-title-group">
+                    <div class="briefing-bot-name">TRỢ LÝ FIRESAT BOT:</div>
+                    <h2 class="briefing-title" id="briefing-title">THU THẬP DỮ LIỆU TỪ QUỸ ĐẠO KHÔNG GIAN</h2>
+                </div>
+            </div>
+
+            <div class="briefing-story-box">
+                <div class="story-label">📡 BỐI CẢNH:</div>
+                <p class="story-content" id="briefing-story">
+                    Vệ tinh FireSat đang bay quanh Trái Đất để thu thập dữ liệu huấn luyện AI nhận diện cháy rừng.
+                </p>
+            </div>
+
+            <div class="briefing-mission-box">
+                <div class="mission-label">🎯 NHIỆM VỤ:</div>
+                <p class="mission-content" id="briefing-mission">
+                    Canh chùm quét trùm lên các tọa độ rồi click chuột để chụp đủ 16 ảnh viễn thám.
+                </p>
+            </div>
+
+            <div class="briefing-actions">
+                <button class="btn-briefing-start" id="btn-briefing-confirm">
+                    🚀 BẮT ĐẦU THU THẬP 16 ẢNH
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT INCLUDES -->
+    <script src="js/audio.js?v=8"></script>
+    <script src="js/data.js?v=8"></script>
+    <script src="js/particles.js?v=8"></script>
+    <script src="js/globe.js?v=8"></script>
+    <script src="js/game.js?v=8"></script>
+</body>
+</html>
