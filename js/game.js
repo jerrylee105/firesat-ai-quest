@@ -471,7 +471,7 @@ class FireSatGame {
                 this.selectDeckPhoto(photo.id);
             });
 
-            // Kéo trực tiếp thẻ bài
+            // Kéo chuột trên máy tính (Desktop Drag & Drop)
             card.addEventListener('dragstart', (e) => {
                 if (this.classifiedPhotoIds.has(photo.id)) {
                     e.preventDefault();
@@ -481,6 +481,76 @@ class FireSatGame {
                 e.dataTransfer.setData('text/plain', String(photo.id));
                 e.dataTransfer.effectAllowed = 'move';
             });
+
+            // Kéo thả cảm ứng trên Máy tính bảng & Màn hình chạm (Touch Drag & Drop)
+            let touchGhost = null;
+            let touchStartX = 0, touchStartY = 0;
+            let isTouchDragging = false;
+
+            card.addEventListener('touchstart', (e) => {
+                if (this.classifiedPhotoIds.has(photo.id)) return;
+                this.selectDeckPhoto(photo.id);
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                isTouchDragging = false;
+            }, { passive: true });
+
+            card.addEventListener('touchmove', (e) => {
+                if (this.classifiedPhotoIds.has(photo.id)) return;
+                const touch = e.touches[0];
+                const dx = touch.clientX - touchStartX;
+                const dy = touch.clientY - touchStartY;
+
+                // Khi ngón tay bắt đầu kéo rời khỏi vị trí: kích hoạt bóng thẻ bay theo tay
+                if (!isTouchDragging && (Math.abs(dy) > 8 || Math.abs(dx) > 12)) {
+                    isTouchDragging = true;
+                    touchGhost = card.cloneNode(true);
+                    touchGhost.className = 'deck-card deck-card-ghost';
+                    touchGhost.style.width = `${card.offsetWidth}px`;
+                    touchGhost.style.height = `${card.offsetHeight}px`;
+                    document.body.appendChild(touchGhost);
+                }
+
+                if (isTouchDragging && touchGhost) {
+                    if (e.cancelable) e.preventDefault(); // Ngăn cuộn trang khi đang kéo thẻ
+                    touchGhost.style.left = `${touch.clientX}px`;
+                    touchGhost.style.top = `${touch.clientY}px`;
+
+                    // Tìm khay phân loại bên dưới đầu ngón tay
+                    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                    document.querySelectorAll('.energy-drop-pod').forEach(p => p.classList.remove('drag-over'));
+                    if (elemBelow) {
+                        const pod = elemBelow.closest('.energy-drop-pod');
+                        if (pod) pod.classList.add('drag-over');
+                    }
+                }
+            }, { passive: false });
+
+            const finishTouchDrag = (e) => {
+                if (touchGhost) {
+                    const touch = e.changedTouches ? e.changedTouches[0] : null;
+                    document.querySelectorAll('.energy-drop-pod').forEach(p => p.classList.remove('drag-over'));
+                    if (touch) {
+                        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                        if (elemBelow) {
+                            const pod = elemBelow.closest('.energy-drop-pod');
+                            if (pod) {
+                                const target = pod.getAttribute('data-target');
+                                if (target) {
+                                    this.classifyPhoto(photo.id, target);
+                                }
+                            }
+                        }
+                    }
+                    touchGhost.remove();
+                    touchGhost = null;
+                }
+                isTouchDragging = false;
+            };
+
+            card.addEventListener('touchend', finishTouchDrag);
+            card.addEventListener('touchcancel', finishTouchDrag);
 
             grid.appendChild(card);
         });

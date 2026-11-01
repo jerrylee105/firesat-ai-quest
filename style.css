@@ -1178,6 +1178,22 @@ body {
     overflow: hidden;
     transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: pan-x;
+}
+
+.deck-card-ghost {
+    position: fixed !important;
+    pointer-events: none !important;
+    z-index: 999999 !important;
+    border: 2px solid var(--neon-blue) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 0 30px rgba(0, 229, 255, 0.9), 0 10px 40px rgba(0, 0, 0, 0.85) !important;
+    background: linear-gradient(180deg, rgba(20, 40, 70, 0.96) 0%, rgba(10, 18, 35, 0.98) 100%) !important;
+    transform: translate(-50%, -50%) scale(1.12) !important;
+    opacity: 0.95 !important;
+    will-change: transform, left, top;
 }
 
 .deck-card:hover {
