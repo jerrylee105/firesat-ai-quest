@@ -117,4 +117,4 @@
     * *Đốm cháy phát hiện:* $5m \times 5m$ (Siêu sớm!)
     * *Thời gian cảnh báo:* Ngay lập tức (Dưới 20 phút)
     * *Diện tích rừng được cứu:* 10.000 héc-ta rừng nguyên sinh!
-  * Nút: `[ CHƠI LẠI ]` 
+  * Nút: `[ CHƠI LẠI ]`  
