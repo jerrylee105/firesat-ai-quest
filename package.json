@@ -4,8 +4,8 @@
   "private": true,
   "description": "FireSat AI Quest - Mô phỏng Vệ tinh & Học máy Phát hiện Cháy rừng Siêu sớm",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node local-server.js",
+    "dev": "node local-server.js"
   },
   "keywords": [
     "firesat",
