@@ -229,9 +229,7 @@ body {
     position: relative;
     z-index: 10;
     flex: 1;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -240,18 +238,16 @@ body {
 .screen {
     position: absolute;
     width: 100%;
-    min-height: 100%;
-    height: auto;
+    height: 100%;
     display: none;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    padding: 14px 14px 40px 14px;
+    justify-content: center;
+    padding: 14px;
     opacity: 0;
     transform: scale(0.97);
     transition: opacity 0.35s ease, transform 0.35s ease;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     box-sizing: border-box;
 }
 
@@ -259,6 +255,26 @@ body {
     display: flex;
     opacity: 1;
     transform: scale(1);
+}
+
+/* Áp dụng cuộn dọc riêng biệt cho Screen 2 để bảo toàn hiển thị 100% chiều cao của Quả địa cầu 3D Screen 1 */
+#screen-2 {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-height: 840px) {
+    #screen-2 {
+        justify-content: flex-start;
+        padding-top: 10px;
+        padding-bottom: 40px;
+    }
+    #screen-2 .arcade-stage-desk {
+        min-height: 600px;
+        height: auto;
+        margin: 0 auto;
+        padding-bottom: 30px;
+    }
 }
 
 /* ================= SCREEN 0: MISSION BRIEF ================= */
@@ -397,6 +413,7 @@ body {
 .satellite-ground-canvas {
     position: relative;
     flex: 1;
+    min-height: 320px;
     overflow: hidden;
     background: radial-gradient(circle at 50% 50%, #0d1b2a 0%, #080f1d 60%, #030712 100%);
     cursor: crosshair;

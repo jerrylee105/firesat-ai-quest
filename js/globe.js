@@ -113,8 +113,8 @@ class Earth3DGlobe {
         if (!this.canvas) return;
         const parent = this.canvas.parentElement;
         const rect = parent ? parent.getBoundingClientRect() : this.canvas.getBoundingClientRect();
-        const w = rect.width || window.innerWidth || 960;
-        const h = rect.height || 520;
+        const w = (rect.width && rect.width > 100) ? rect.width : (window.innerWidth || 960);
+        const h = (rect.height && rect.height > 100) ? rect.height : (window.innerHeight ? Math.max(380, window.innerHeight * 0.55) : 520);
 
         this.width = this.canvas.width = Math.round(w);
         this.height = this.canvas.height = Math.round(h);

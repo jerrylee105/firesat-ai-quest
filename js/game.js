@@ -494,13 +494,17 @@ class FireSatGame {
 
             card.addEventListener('touchstart', (e) => {
                 if (this.classifiedPhotoIds.has(photo.id)) return;
-                this.selectDeckPhoto(photo.id);
+                this.selectDeckPhoto(photo.id, false); // Cập nhật buồng soi nhưng không scrollIntoView làm lệch ngón tay
                 const touch = e.touches[0];
                 touchStartX = touch.clientX;
                 touchStartY = touch.clientY;
                 isTouchDragging = false;
 
-                // Cache trước tọa độ 3 khay phân loại để tránh query DOM trong lúc vuốt ngón tay
+                const rect = card.getBoundingClientRect();
+                cardW = rect.width || 86;
+                cardH = rect.height || 82;
+
+                // Cache trước tọa độ 3 khay phân loại
                 cachedPods = Array.from(document.querySelectorAll('.energy-drop-pod')).map(pod => ({
                     el: pod,
                     target: pod.getAttribute('data-target'),
@@ -514,14 +518,15 @@ class FireSatGame {
                 const dx = touch.clientX - touchStartX;
                 const dy = touch.clientY - touchStartY;
 
-                // Phân biệt kéo thẻ với cuộn trang: chỉ kích hoạt kéo khi vuốt lên hoặc kéo rõ rệt
+                // Phân biệt: Vuốt ngang (cuộn xem thẻ bài) vs Vuốt lên (kéo thẻ vào khay bên trên)
                 if (!isTouchDragging) {
-                    if (Math.abs(dy) > 10 || Math.abs(dx) > 12) {
+                    // Nếu cử chỉ ngang trội hơn dọc -> người dùng đang cuộn thanh thẻ bài, không kích hoạt kéo
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        return;
+                    }
+                    // Chỉ kích hoạt kéo khi vuốt lên trên về phía 3 khay phân loại (dy < -10)
+                    if (dy < -10 && Math.abs(dy) > Math.abs(dx)) {
                         isTouchDragging = true;
-                        const rect = card.getBoundingClientRect();
-                        cardW = rect.width;
-                        cardH = rect.height;
-
                         touchGhost = card.cloneNode(true);
                         touchGhost.className = 'deck-card deck-card-ghost';
                         touchGhost.style.width = `${cardW}px`;
@@ -543,7 +548,7 @@ class FireSatGame {
                             // Tăng tốc phần cứng GPU qua translate3d (không gây reflow trang)
                             touchGhost.style.transform = `translate3d(${currentX - cardW / 2}px, ${currentY - cardH / 2}px, 0) scale(1.12)`;
 
-                            // So sánh tọa độ số học thuần túy với 3 khay đã cache
+                            // Xác định khay đang được lướt qua
                             let activePod = null;
                             for (let p of cachedPods) {
                                 const r = p.rect;
@@ -552,10 +557,18 @@ class FireSatGame {
                                     break;
                                 }
                             }
+                            // Fallback hit-test DOM trực tiếp nếu có cuộn trang
+                            if (!activePod) {
+                                const elUnder = document.elementFromPoint(currentX, currentY);
+                                const podUnder = elUnder ? elUnder.closest('.energy-drop-pod') : null;
+                                if (podUnder) {
+                                    activePod = cachedPods.find(p => p.el === podUnder) || { el: podUnder, target: podUnder.getAttribute('data-target') };
+                                }
+                            }
 
                             if (activePod !== hoveredPod) {
-                                if (hoveredPod) hoveredPod.el.classList.remove('drag-over');
-                                if (activePod) activePod.el.classList.add('drag-over');
+                                if (hoveredPod && hoveredPod.el) hoveredPod.el.classList.remove('drag-over');
+                                if (activePod && activePod.el) activePod.el.classList.add('drag-over');
                                 hoveredPod = activePod;
                             }
                         });
@@ -568,28 +581,28 @@ class FireSatGame {
                     cancelAnimationFrame(rafId);
                     rafId = null;
                 }
-                if (touchGhost) {
-                    const touch = e.changedTouches ? e.changedTouches[0] : null;
-                    if (hoveredPod) {
-                        hoveredPod.el.classList.remove('drag-over');
-                    }
-                    cachedPods.forEach(p => p.el.classList.remove('drag-over'));
+                if (hoveredPod && hoveredPod.el) {
+                    hoveredPod.el.classList.remove('drag-over');
+                }
+                cachedPods.forEach(p => p.el && p.el.classList.remove('drag-over'));
 
-                    if (touch) {
-                        const dropX = touch.clientX;
-                        const dropY = touch.clientY;
-                        let droppedPod = null;
-                        for (let p of cachedPods) {
-                            const r = p.rect;
-                            if (dropX >= r.left && dropX <= r.right && dropY >= r.top && dropY <= r.bottom) {
-                                droppedPod = p;
-                                break;
-                            }
-                        }
-                        if (droppedPod && droppedPod.target) {
-                            this.classifyPhoto(photo.id, droppedPod.target);
+                if (isTouchDragging && touchGhost) {
+                    const touch = e.changedTouches ? e.changedTouches[0] : null;
+                    let target = null;
+                    if (hoveredPod && hoveredPod.target) {
+                        target = hoveredPod.target;
+                    } else if (touch) {
+                        const elUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                        const podUnder = elUnder ? elUnder.closest('.energy-drop-pod') : null;
+                        if (podUnder) {
+                            target = podUnder.getAttribute('data-target');
                         }
                     }
+
+                    if (target) {
+                        this.classifyPhoto(photo.id, target);
+                    }
+
                     touchGhost.remove();
                     touchGhost = null;
                 }
@@ -605,7 +618,7 @@ class FireSatGame {
         });
     }
 
-    selectDeckPhoto(photoId) {
+    selectDeckPhoto(photoId, autoScroll = false) {
         const photo = window.GAME_DATA.photos.find(p => p.id === photoId);
         if (!photo) return;
 
@@ -616,8 +629,10 @@ class FireSatGame {
         const activeCard = document.getElementById(`deck-card-${photoId}`);
         if (activeCard && !this.classifiedPhotoIds.has(photoId)) {
             activeCard.classList.add('selected');
-            // Cuộn thẻ đang chọn vào giữa tầm nhìn
-            activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            if (autoScroll) {
+                // Chỉ cuộn thẻ khi cần thiết (vd tự động chuyển sang thẻ kế tiếp)
+                activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
         }
 
         // Cập nhật thông số lên buồng hiển thị
@@ -735,7 +750,7 @@ class FireSatGame {
             // Tự động chuyển Hologram sang thẻ kế tiếp chưa phân loại
             const nextPhoto = this.collectedPhotos.find(p => !this.classifiedPhotoIds.has(p.id));
             if (nextPhoto) {
-                this.selectDeckPhoto(nextPhoto.id);
+                this.selectDeckPhoto(nextPhoto.id, true);
             }
 
             // Hoàn thành 16 ảnh
