@@ -482,10 +482,15 @@ class FireSatGame {
                 e.dataTransfer.effectAllowed = 'move';
             });
 
-            // Kéo thả cảm ứng trên Máy tính bảng & Màn hình chạm (Touch Drag & Drop)
+            // Kéo thả cảm ứng trên Máy tính bảng & Màn hình chạm (Touch Drag & Drop siêu mượt 60-120 FPS)
             let touchGhost = null;
             let touchStartX = 0, touchStartY = 0;
             let isTouchDragging = false;
+            let cardW = 86, cardH = 82;
+            let cachedPods = [];
+            let hoveredPod = null;
+            let rafId = null;
+            let currentX = 0, currentY = 0;
 
             card.addEventListener('touchstart', (e) => {
                 if (this.classifiedPhotoIds.has(photo.id)) return;
@@ -494,6 +499,13 @@ class FireSatGame {
                 touchStartX = touch.clientX;
                 touchStartY = touch.clientY;
                 isTouchDragging = false;
+
+                // Cache trước tọa độ 3 khay phân loại để tránh query DOM trong lúc vuốt ngón tay
+                cachedPods = Array.from(document.querySelectorAll('.energy-drop-pod')).map(pod => ({
+                    el: pod,
+                    target: pod.getAttribute('data-target'),
+                    rect: pod.getBoundingClientRect()
+                }));
             }, { passive: true });
 
             card.addEventListener('touchmove', (e) => {
@@ -502,50 +514,87 @@ class FireSatGame {
                 const dx = touch.clientX - touchStartX;
                 const dy = touch.clientY - touchStartY;
 
-                // Khi ngón tay bắt đầu kéo rời khỏi vị trí: kích hoạt bóng thẻ bay theo tay
-                if (!isTouchDragging && (Math.abs(dy) > 8 || Math.abs(dx) > 12)) {
-                    isTouchDragging = true;
-                    touchGhost = card.cloneNode(true);
-                    touchGhost.className = 'deck-card deck-card-ghost';
-                    touchGhost.style.width = `${card.offsetWidth}px`;
-                    touchGhost.style.height = `${card.offsetHeight}px`;
-                    document.body.appendChild(touchGhost);
+                // Phân biệt kéo thẻ với cuộn trang: chỉ kích hoạt kéo khi vuốt lên hoặc kéo rõ rệt
+                if (!isTouchDragging) {
+                    if (Math.abs(dy) > 10 || Math.abs(dx) > 12) {
+                        isTouchDragging = true;
+                        const rect = card.getBoundingClientRect();
+                        cardW = rect.width;
+                        cardH = rect.height;
+
+                        touchGhost = card.cloneNode(true);
+                        touchGhost.className = 'deck-card deck-card-ghost';
+                        touchGhost.style.width = `${cardW}px`;
+                        touchGhost.style.height = `${cardH}px`;
+                        touchGhost.style.transform = `translate3d(${touch.clientX - cardW / 2}px, ${touch.clientY - cardH / 2}px, 0) scale(1.12)`;
+                        document.body.appendChild(touchGhost);
+                    }
                 }
 
                 if (isTouchDragging && touchGhost) {
-                    if (e.cancelable) e.preventDefault(); // Ngăn cuộn trang khi đang kéo thẻ
-                    touchGhost.style.left = `${touch.clientX}px`;
-                    touchGhost.style.top = `${touch.clientY}px`;
+                    if (e.cancelable) e.preventDefault(); // Ngăn trang bị nhảy cuộn trong lúc đang kéo thẻ
+                    currentX = touch.clientX;
+                    currentY = touch.clientY;
 
-                    // Tìm khay phân loại bên dưới đầu ngón tay
-                    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-                    document.querySelectorAll('.energy-drop-pod').forEach(p => p.classList.remove('drag-over'));
-                    if (elemBelow) {
-                        const pod = elemBelow.closest('.energy-drop-pod');
-                        if (pod) pod.classList.add('drag-over');
+                    if (!rafId) {
+                        rafId = requestAnimationFrame(() => {
+                            rafId = null;
+                            if (!touchGhost) return;
+                            // Tăng tốc phần cứng GPU qua translate3d (không gây reflow trang)
+                            touchGhost.style.transform = `translate3d(${currentX - cardW / 2}px, ${currentY - cardH / 2}px, 0) scale(1.12)`;
+
+                            // So sánh tọa độ số học thuần túy với 3 khay đã cache
+                            let activePod = null;
+                            for (let p of cachedPods) {
+                                const r = p.rect;
+                                if (currentX >= r.left && currentX <= r.right && currentY >= r.top && currentY <= r.bottom) {
+                                    activePod = p;
+                                    break;
+                                }
+                            }
+
+                            if (activePod !== hoveredPod) {
+                                if (hoveredPod) hoveredPod.el.classList.remove('drag-over');
+                                if (activePod) activePod.el.classList.add('drag-over');
+                                hoveredPod = activePod;
+                            }
+                        });
                     }
                 }
             }, { passive: false });
 
             const finishTouchDrag = (e) => {
+                if (rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
                 if (touchGhost) {
                     const touch = e.changedTouches ? e.changedTouches[0] : null;
-                    document.querySelectorAll('.energy-drop-pod').forEach(p => p.classList.remove('drag-over'));
+                    if (hoveredPod) {
+                        hoveredPod.el.classList.remove('drag-over');
+                    }
+                    cachedPods.forEach(p => p.el.classList.remove('drag-over'));
+
                     if (touch) {
-                        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-                        if (elemBelow) {
-                            const pod = elemBelow.closest('.energy-drop-pod');
-                            if (pod) {
-                                const target = pod.getAttribute('data-target');
-                                if (target) {
-                                    this.classifyPhoto(photo.id, target);
-                                }
+                        const dropX = touch.clientX;
+                        const dropY = touch.clientY;
+                        let droppedPod = null;
+                        for (let p of cachedPods) {
+                            const r = p.rect;
+                            if (dropX >= r.left && dropX <= r.right && dropY >= r.top && dropY <= r.bottom) {
+                                droppedPod = p;
+                                break;
                             }
+                        }
+                        if (droppedPod && droppedPod.target) {
+                            this.classifyPhoto(photo.id, droppedPod.target);
                         }
                     }
                     touchGhost.remove();
                     touchGhost = null;
                 }
+                hoveredPod = null;
+                cachedPods = [];
                 isTouchDragging = false;
             };
 
